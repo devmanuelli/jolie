@@ -139,7 +139,12 @@ class TypeImpl extends Type {
 	@Override
 	protected void check( Value value, StringBuilder pathBuilder )
 		throws TypeCheckingException {
-		basicType.check( value, pathBuilder::toString );
+		// Cast native type first to allow type conversions (String → ValuePath, int → double, etc.)
+		try {
+			castNativeType( value, pathBuilder );
+		} catch( TypeCastingException e ) {
+			throw new TypeCheckingException( e.getMessage() );
+		}
 
 		if( subTypes != null ) {
 			final int l = pathBuilder.length();
@@ -240,6 +245,14 @@ class TypeImpl extends Type {
 			case RAW:
 				try {
 					value.setValue( value.byteArrayValueStrict() );
+				} catch( TypeCastingException e ) {
+					throw new TypeCastingException(
+						"Cannot cast node value to " + basicType.nativeType().id() + ": " + pathBuilder.toString() );
+				}
+				break;
+			case PATH:
+				try {
+					value.setValue( value.pathValueStrict() );
 				} catch( TypeCastingException e ) {
 					throw new TypeCastingException(
 						"Cannot cast node value to " + basicType.nativeType().id() + ": " + pathBuilder.toString() );
